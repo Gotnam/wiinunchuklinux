@@ -1,0 +1,22 @@
+// Wii Nunchuk dts
+/dts-v1/;
+/plugin/;
+
+/{
+	compatible = "brcm,bcm2835";
+
+	fragment@0{
+		target = <&i2c1>;
+		__overlay__{
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+		
+			nnchk: nnchk@52{
+				compatible = "nintendo,wiinunchuk";
+				reg = <0x52>;
+				status = "okay";
+			};
+		};
+	};
+};
