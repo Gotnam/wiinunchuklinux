@@ -19,12 +19,12 @@ Install the following dependencies:
 
 ```sh
 sudo apt install -y build-essential make xz
-
+```
 If using the raspberry pi os, install the raspberry pi kernel headers:
 
 ```sh
 sudo apt install raspberrypi-kernel-headers
-
+```
 ### Build & Install
 
 Clone the repository and build the driver:
@@ -33,4 +33,4 @@ Clone the repository and build the driver:
 git clone https://github.com/Gotnam/wiinunchuklinux.git
 cd wiinunchuklinux
 make all
-
+```
