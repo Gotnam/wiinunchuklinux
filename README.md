@@ -27,10 +27,23 @@ sudo apt install raspberrypi-kernel-headers
 ```
 ### Build & Install
 
-Clone the repository and build the driver:
+Clone the repository:
 
 ```sh
 git clone https://github.com/Gotnam/wiinunchuklinux.git
 cd wiinunchuklinux
-make all
 ```
+
+Edit the KDIR variable in the Makefile to point to the kernel header build directory. If you are using the raspberry pi os or are otherwise building on the host machine, then the directory is:
+
+```make
+KDIR := /lib/modules/$(uname -r)/build
+```
+
+Then run make:
+
+```sh
+make all
+sudo make install
+```
+
