@@ -1,10 +1,10 @@
-/*
+/**************************************************************
  * Wii Nunchuk linux driver.
  * Presents the Wii Nunchuk as a linux input gamepad.
  * 
  * Author: Tobi Ogundimu
  * E-mail: tobiogundimu@gmail.com
- */
+ *************************************************************/
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -56,6 +56,9 @@ static struct i2c_driver nnchk_drv = {
 static struct task_struct* poll_task;
 static int nnchk_poll(void* data);
 
+/**********************************************************************
+ * Set up I2C device and virtual input device
+ *********************************************************************/
 static int __init nnchk_init(void){
 	if(i2c_add_driver(&nnchk_drv)){
 		printk("I2C driver add function failed.\n");
@@ -96,6 +99,7 @@ module_exit(nnchk_exit);
 
 static int nnchk_probe(struct i2c_client* client){
 	if(client -> addr != CLIENT_ADDR){
+		//Wii Nunchuk address is always 0x52.
 		printk("Error: Address must be 0x52.\n");
 		return -1;
 	}
@@ -103,6 +107,9 @@ static int nnchk_probe(struct i2c_client* client){
 	return 0;
 }
 
+/***********************************************************************
+ * Begin polling thread when event file is accessed.
+ **********************************************************************/
 static int nnchk_open(struct input_dev* dev){
 	poll_task = kthread_run(nnchk_poll, NULL, "Nunchuk poll thread");
 	if(IS_ERR(poll_task)){
@@ -112,10 +119,17 @@ static int nnchk_open(struct input_dev* dev){
 	return 0;
 }
 
+/***********************************************************************
+ * Stop polling when event file is closed.
+ **********************************************************************/
 static void nnchk_close(struct input_dev* dev){
 	kthread_stop(poll_task);
 }
 
+/**********************************************************************
+ * Polling task: The wii nunchuk has no interrupt signals,
+ * so data is retrieved through polling.
+ *********************************************************************/
 static int nnchk_poll(void* data){
 	unsigned char buffer[6];
 	unsigned short interval = 0;//Nunchuk needs to be reinitialized frequently
@@ -125,12 +139,13 @@ static int nnchk_poll(void* data){
 	unsigned int acc_Z;
 	char handshake[2] = {0x40, 0x00};
 	while(!kthread_should_stop()){
+		//Send handshake signal regularly to prevent sleeping.
 		if(interval % 10 == 0){
 			tmp = i2c_master_send(nnchk_client, handshake, 2);
 			if(tmp < 2) printk("Handshake incomplete.\n");
 		}
 		interval++;
-		fsleep(1000);
+		fsleep(1000);//delays are required to allow the nunchuk to fetch data.
 		if(i2c_smbus_write_byte(nnchk_client,0x00) < 0)
 			printk("Request for data failed");
 
@@ -139,8 +154,12 @@ static int nnchk_poll(void* data){
 		if(tmp < 6) printk("Data incomplete.\n");
 		
 		for(int i = 0; i < 6; i++) 
-			buffer[i] = (buffer[i] ^ 0x17) + 0x17;
-		
+			buffer[i] = (buffer[i] ^ 0x17) + 0x17;//Data from the wii nunchuk must be decrypted.
+			
+		/**********************************************************************
+		 * The two least significant bits of the accelerometers are stored
+		 * in the 6th byte.
+		 *********************************************************************/
 		acc_X = (buffer[2] << 2) | ((buffer[5] >> 2) & 0x03);
 		acc_Y = (buffer[3] << 2) | ((buffer[5] >> 4) & 0x03);
 		acc_Z = (buffer[4] << 2) | ((buffer[5] >> 6) & 0x03);
